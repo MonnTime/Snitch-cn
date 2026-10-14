@@ -32,7 +32,6 @@ import ipaddress
 import logging
 import re
 import socket
-import subprocess
 import sys
 import threading
 import time
@@ -42,6 +41,7 @@ from typing import Callable, Optional
 
 import psutil
 
+from oscmd import run_text
 from scanner.oui import lookup, is_local_mac, DEVICE_TYPE_COLORS
 
 logger = logging.getLogger("snitch.scanner")
@@ -182,12 +182,12 @@ def _read_arp_cmd() -> list[tuple[str, str]]:
     """EN: Parse `arp -a` on Windows ("-"-separated MACs) and macOS
     (parenthesized IPs). / FR: Analyser `arp -a` sous Windows (MAC séparées par
     « - ») et macOS (IP entre parenthèses)."""
-    try:
-        proc = subprocess.run(["arp", "-a"], capture_output=True, text=True,
-                              timeout=10)
-        out_text = proc.stdout
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        logger.debug("arp -a failed: %s", exc)
+    # EN: run_text() decodes with the real locale encoding — `text=True` alone
+    #     decodes as UTF-8, which breaks on a Chinese Windows console (cp936).
+    # FR: run_text() décode avec le véritable encodage local — `text=True` seul
+    #     décode en UTF-8, ce qui casse sur une console Windows chinoise (cp936).
+    out_text = run_text(["arp", "-a"], timeout=10)
+    if out_text is None:
         return []
 
     READ_STATS.update({"lines": 0, "parsed": 0, "incomplete": 0,
@@ -247,19 +247,21 @@ def default_gateway() -> Optional[str]:
                     raw = parts[2]
                     return socket.inet_ntoa(bytes.fromhex(raw)[::-1])
         elif sys.platform == "darwin":
-            proc = subprocess.run(["route", "-n", "get", "default"],
-                                  capture_output=True, text=True, timeout=5)
-            m = re.search(r"gateway:\s*(\S+)", proc.stdout)
+            out = run_text(["route", "-n", "get", "default"], timeout=5)
+            m = re.search(r"gateway:\s*(\S+)", out or "")
             if m:
                 return m.group(1)
         elif sys.platform.startswith("win"):
-            proc = subprocess.run(["route", "print", "-4", "0.0.0.0"],
-                                  capture_output=True, text=True, timeout=10)
-            for line in proc.stdout.splitlines():
+            # EN: `route print` output is cp936 on a Chinese console — run_text()
+            #     decodes it correctly and never leaves us with None.
+            # FR: la sortie de `route print` est du cp936 sur une console
+            #     chinoise — run_text() la décode correctement, sans None.
+            out = run_text(["route", "print", "-4", "0.0.0.0"], timeout=10)
+            for line in (out or "").splitlines():
                 cols = line.split()
                 if len(cols) >= 3 and cols[0] == "0.0.0.0" and IPV4_RE.fullmatch(cols[2]):
                     return cols[2]
-    except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
+    except (OSError, ValueError) as exc:
         logger.debug("default gateway detection failed: %s", exc)
     return None
 

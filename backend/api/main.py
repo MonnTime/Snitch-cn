@@ -64,7 +64,6 @@ import logging
 import os
 import queue
 import socket
-import subprocess
 import sys
 import threading
 import time
@@ -83,6 +82,7 @@ from capture.sniffer import Packet, PacketSniffer, get_local_ips
 import demo
 from capture.media_monitor import MediaMonitor, MediaState
 from classifier.traffic import classify
+from oscmd import run_text
 from resolver.dns_geo import (enrich_ip, is_private, learn_dns_answers,
                               learn_sni, lookup_domain)
 from scanner.arp_scanner import ARPScanner, Device, default_gateway as _default_gateway
@@ -336,9 +336,12 @@ def _local_hostname() -> str:
     """
     try:
         if sys.platform == "darwin":
-            out = subprocess.run(["scutil", "--get", "ComputerName"],
-                                 capture_output=True, text=True,
-                                 timeout=3).stdout.strip()
+            # EN: run_text() decodes with the real locale encoding — see oscmd.py
+            #     for why `text=True` alone is not enough (UTF-8 mode, cp936).
+            # FR: run_text() décode avec le véritable encodage local — voir
+            #     oscmd.py (mode UTF-8, cp936).
+            out = (run_text(["scutil", "--get", "ComputerName"],
+                            timeout=3) or "").strip()
             if out:
                 return out
         elif sys.platform.startswith("win"):
@@ -346,15 +349,10 @@ def _local_hostname() -> str:
             if name:
                 return name
         elif sys.platform.startswith("linux"):
-            try:
-                out = subprocess.run(["hostnamectl", "--pretty"],
-                                     capture_output=True, text=True,
-                                     timeout=3).stdout.strip()
-                if out:
-                    return out
-            except (OSError, subprocess.TimeoutExpired):
-                pass
-    except (OSError, subprocess.TimeoutExpired):
+            out = (run_text(["hostnamectl", "--pretty"], timeout=3) or "").strip()
+            if out:
+                return out
+    except OSError:
         pass
     try:
         return socket.gethostname().removesuffix(".local")
@@ -364,10 +362,25 @@ def _local_hostname() -> str:
 
 def _gateway() -> Optional[str]:
     """EN: Cached default_gateway() (5 min TTL).
-    FR: default_gateway() mis en cache (TTL 5 min)."""
+    FR: default_gateway() mis en cache (TTL 5 min).
+
+    EN: Never lets an exception escape. This runs on the hot packet path, so a
+        propagating error aborts the whole batch and leaves the graph empty —
+        exactly what the Windows cp936 decode bug used to do (the cache was
+        never written, so `route print` was re-spawned for every batch).
+    FR: Ne laisse jamais échapper d'exception. Appelé sur le chemin chaud des
+        paquets, une erreur propagée fait échouer tout le lot et laisse le
+        graphe vide — exactement ce que faisait le bug de décodage cp936 sous
+        Windows (le cache n'était jamais écrit, donc `route print` était
+        relancé à chaque lot).
+    """
     now = time.time()
     if now - _gateway_cache["ts"] > 300:
-        _gateway_cache["ip"] = _default_gateway()
+        try:
+            _gateway_cache["ip"] = _default_gateway()
+        except Exception as exc:
+            logger.debug("default gateway detection failed: %s", exc)
+            _gateway_cache["ip"] = None
         _gateway_cache["ts"] = now
     return _gateway_cache["ip"]
 
@@ -1419,7 +1432,11 @@ async def get_diagnostics() -> dict:
         #     silencieux.
         "dropped": {
             **dict(_drop_stats),
-            "capture": dict(_sniffer.stats) if _sniffer else {},
+            # EN: Only PacketSniffer exposes `.stats` — the demo feeder does not,
+            #     so getattr keeps the support bundle working in demo mode.
+            # FR: Seul PacketSniffer expose `.stats` — le feeder de démo non,
+            #     donc getattr garde le paquet de support fonctionnel en démo.
+            "capture": dict(getattr(_sniffer, "stats", None) or {}),
             "arp_read": dict(_arp_stats),
         },
         "db_bytes": db_file.stat().st_size if db_file.exists() else 0,

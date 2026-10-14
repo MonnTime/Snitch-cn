@@ -38,7 +38,7 @@ packages = [
     "api", "capture", "classifier", "detection", "resolver", "scanner",
     "storage",
 ]
-py-modules = ["cli", "paths", "logging_config", "run_backend"]
+py-modules = ["cli", "paths", "logging_config", "oscmd", "run_backend"]
 
 # EN: The built frontend ships inside the wheel — `npm run build` output is
 #     expected at frontend/dist and gets copied to backend/frontend_dist by
