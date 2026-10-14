@@ -16,10 +16,12 @@ import { useState, useEffect } from 'react'
 import { Settings as SettingsIcon, X, FolderOpen, Download, ShieldCheck } from 'lucide-react'
 import { useT } from '../i18n'
 import { apiBase, authHeaders } from '../api'
+import LangToggle from './LangToggle'
 
 export function SettingsButton({ onClick }) {
+  const { t } = useT()
   return (
-    <button onClick={onClick} aria-label="Settings / Réglages" style={{
+    <button onClick={onClick} aria-label={t('aria_settings')} style={{
       display: 'flex', alignItems: 'center', gap: 6,
       background: '#0f0f0f', border: '1px solid #2a2a2a',
       borderRadius: 20, padding: '5px 14px',
@@ -31,7 +33,7 @@ export function SettingsButton({ onClick }) {
   )
 }
 
-export function SettingsPanel({ onClose, lang, setLang }) {
+export function SettingsPanel({ onClose }) {
   const { t } = useT()
   const [settings, setSettings] = useState(null)
   const [retention, setRetention] = useState(24)
@@ -107,7 +109,7 @@ export function SettingsPanel({ onClose, lang, setLang }) {
   const hint = { fontSize: 10, color: '#64748b', marginTop: 2 }
 
   return (
-    <div role="dialog" aria-label="Settings / Réglages" style={{
+    <div role="dialog" aria-label={t('settings_title')} style={{
       position: 'absolute', top: 56, right: 16, zIndex: 200,
       width: 380, maxHeight: 'calc(100vh - 80px)',
       background: '#0f0f0f', border: '1px solid #2a2a2a',
@@ -130,20 +132,10 @@ export function SettingsPanel({ onClose, lang, setLang }) {
       </div>
 
       <div style={{ padding: '4px 18px 16px' }}>
-        {/* Language / Langue */}
+        {/* Language / Langue / 界面语言 */}
         <div style={row}>
           <div><div style={label}>{t('settings_language')}</div></div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {['en', 'fr'].map(l => (
-              <button key={l} onClick={() => { setLang(l); save('language', l) }} style={{
-                background: lang === l ? '#3b82f6' : '#000000',
-                border: '1px solid #2a2a2a', borderRadius: 6,
-                color: lang === l ? '#fff' : '#64748b',
-                padding: '4px 12px', fontSize: 11, cursor: 'pointer',
-                textTransform: 'uppercase', fontWeight: 600,
-              }}>{l}</button>
-            ))}
-          </div>
+          <LangToggle variant="settings" onChange={l => save('language', l)} />
         </div>
 
         {/* Retention / Rétention */}

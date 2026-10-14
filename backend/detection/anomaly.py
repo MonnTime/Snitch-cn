@@ -102,6 +102,26 @@ SUSPICIOUS_PORTS = {
     9050: "Tor SOCKS",
 }
 
+# EN: Stable machine codes for the reasons above — the frontend localizes them
+#     (`reason_*` i18n keys), so a Chinese/French UI never shows the raw
+#     English prose. `SUSPICIOUS_PORTS` stays the human-readable fallback used
+#     in logs and in the alert `message`.
+# FR: Codes machine stables pour les raisons ci-dessus — le frontend les
+#     localise (clés i18n `reason_*`), donc une UI chinoise/française n'affiche
+#     jamais la prose anglaise brute. `SUSPICIOUS_PORTS` reste le repli lisible
+#     utilisé dans les logs et le `message` de l'alerte.
+SUSPICIOUS_PORT_REASONS = {
+    4444: "metasploit_shell",
+    4445: "metasploit_shell",
+    1337: "hacker_port",
+    31337: "back_orifice",
+    6666: "irc_botnet",
+    6667: "irc_botnet",
+    1080: "socks_proxy",
+    9001: "tor_relay",
+    9050: "tor_socks",
+}
+
 # ── Beacon detection parameters / Paramètres de détection beacon ─────────────
 # EN: A beacon is periodic traffic: many similarly-sized gaps between packets.
 #     We require enough samples, a plausible C2 interval (1 s – 10 min) and a
@@ -484,7 +504,9 @@ class AnomalyDetector:
             severity="critical" if is_new_host else "warning",
             message=f"Suspicious port {port} ({reason}) -> {label}",
             node_id=remote_ip,
-            details={"port": port, "reason": reason, "ip": remote_ip, "host": label,
+            details={"port": port, "reason": reason,
+                     "reason_code": SUSPICIOUS_PORT_REASONS.get(port),
+                     "ip": remote_ip, "host": label,
                      "direction": pkt.direction, "process": pkt.process_name},
         )]
 

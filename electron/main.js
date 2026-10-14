@@ -190,12 +190,14 @@ function isNpcapInstalled() {
  */
 async function offerNpcapDownload() {
   const choice = await dialog.showMessageBox({
-    type: 'info', title: 'Snitch — Npcap required / Npcap requis',
+    type: 'info', title: 'Snitch — Npcap required / Npcap requis / 需要 Npcap',
     message: 'Snitch needs Npcap to capture network traffic on Windows.\n' +
-             'Snitch a besoin de Npcap pour capturer le trafic réseau sous Windows.\n\n' +
+             'Snitch a besoin de Npcap pour capturer le trafic réseau sous Windows.\n' +
+             'Snitch 在 Windows 上抓取网络流量需要 Npcap。\n\n' +
              'Download it free from npcap.com, install it, then restart Snitch.\n' +
-             'Téléchargez-le gratuitement sur npcap.com, installez-le, puis relancez Snitch.',
-    buttons: ['Open npcap.com / Ouvrir npcap.com', 'Quit / Quitter'], defaultId: 0,
+             'Téléchargez-le gratuitement sur npcap.com, installez-le, puis relancez Snitch.\n' +
+             '请从 npcap.com 免费下载并安装，然后重启 Snitch。',
+    buttons: ['Open npcap.com / Ouvrir / 打开 npcap.com', 'Quit / Quitter / 退出'], defaultId: 0,
   })
   if (choice.response === 0) {
     await shell.openExternal('https://npcap.com')
@@ -260,9 +262,9 @@ function createMain() {
 }
 
 /**
- * EN: System tray — bilingual menu with Show / Open logs / Quit. The icon
+ * EN: System tray — trilingual menu with Show / Open logs / Quit. The icon
  *     is the generated 512px PNG; Electron scales it per platform.
- * FR: Zone de notification — menu bilingue Afficher / Ouvrir les logs /
+ * FR: Zone de notification — menu trilingue Afficher / Ouvrir les logs /
  *     Quitter. L'icône est le PNG 512 px généré ; Electron l'adapte selon
  *     la plateforme.
  */
@@ -271,16 +273,16 @@ function createTray() {
   tray.setToolTip('Snitch')
   const menu = Menu.buildFromTemplate([
     {
-      label: 'Show Snitch / Afficher Snitch',
+      label: 'Show Snitch / Afficher / 显示',
       click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus() } },
     },
     {
-      label: 'Open logs / Ouvrir les logs',
+      label: 'Open logs / Ouvrir les logs / 打开日志',
       click: () => shell.openPath(logDir),
     },
     { type: 'separator' },
     {
-      label: 'Quit / Quitter',
+      label: 'Quit / Quitter / 退出',
       click: () => { isQuitting = true; app.quit() },
     },
   ])
@@ -454,7 +456,7 @@ function launchBackendElevated() {
 
   backendProc.on('error', err => {
     if (isQuitting) return
-    dialog.showErrorBox('Snitch', `Failed to start backend / Échec du démarrage du backend :\n${err.message}`)
+    dialog.showErrorBox('Snitch', `Failed to start backend / Échec du démarrage du backend / 后端启动失败：\n${err.message}`)
     app.quit()
   })
   // EN: No 'exit' crash-watch here — the wrapper exits as soon as the
@@ -471,7 +473,7 @@ function launchBackend() {
    *      OS (la capture l'exige) ; le mode dev lance sans privilèges pour
    *      itérer sans invite mot de passe (la capture échoue, l'UI marche). */
   if (!fs.existsSync(backendExe)) {
-    dialog.showErrorBox('Snitch', `Backend not found / Backend introuvable :\n${backendExe}`)
+    dialog.showErrorBox('Snitch', `Backend not found / Backend introuvable / 未找到后端：\n${backendExe}`)
     app.quit(); return
   }
 
@@ -509,13 +511,13 @@ function spawnBackendPlain() {
   })
   backendProc.on('error', err => {
     if (isQuitting) return
-    dialog.showErrorBox('Snitch', `Failed to start backend / Échec du démarrage du backend :\n${err.message}`)
+    dialog.showErrorBox('Snitch', `Failed to start backend / Échec du démarrage du backend / 后端启动失败：\n${err.message}`)
     app.quit()
   })
   backendProc.on('exit', (code) => {
     if (isQuitting) return  // EN: normal shutdown — don't alert / FR: arrêt normal — ne pas alerter
     if (mainWindow) {
-      dialog.showErrorBox('Snitch', `Backend stopped (code ${code}) / Backend arrêté (code ${code}).`)
+      dialog.showErrorBox('Snitch', `Backend stopped (code ${code}) / Backend arrêté (code ${code}) / 后端已停止（代码 ${code}）。`)
       app.quit()
     }
   })
@@ -576,18 +578,19 @@ app.whenReady().then(async () => {
       booted = true
     } catch (e) {
       if (!backendElevated) {
-        dialog.showErrorBox('Snitch', `Backend unavailable / Backend indisponible :\n${e.message}`)
+        dialog.showErrorBox('Snitch', `Backend unavailable / Backend indisponible / 后端不可用：\n${e.message}`)
         app.quit(); return
       }
       const choice = await dialog.showMessageBox({
         type: 'warning', title: 'Snitch',
         message: 'The admin prompt was declined or timed out. Capture needs it to watch traffic.\n' +
-                 'L\'invite administrateur a été refusée ou a expiré. La capture en a besoin pour observer le trafic.',
-        detail: `Backend unavailable / Backend indisponible : ${e.message}`,
+                 'L\'invite administrateur a été refusée ou a expiré. La capture en a besoin pour observer le trafic.\n' +
+                 '管理员授权被拒绝或超时。抓包需要该权限才能监控流量。',
+        detail: `Backend unavailable / Backend indisponible / 后端不可用： ${e.message}`,
         buttons: [
-          'Retry / Réessayer',
-          'Continue without capture / Continuer sans capture',
-          'Quit / Quitter',
+          'Retry / Réessayer / 重试',
+          'Continue without capture / Continuer sans capture / 不抓包继续',
+          'Quit / Quitter / 退出',
         ],
         defaultId: 0, cancelId: 2,
       })
@@ -599,7 +602,7 @@ app.whenReady().then(async () => {
           await waitForBackend()
           booted = true
         } catch (e2) {
-          dialog.showErrorBox('Snitch', `Backend unavailable / Backend indisponible :\n${e2.message}`)
+          dialog.showErrorBox('Snitch', `Backend unavailable / Backend indisponible / 后端不可用：\n${e2.message}`)
           app.quit(); return
         }
       }

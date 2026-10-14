@@ -24,7 +24,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
-import { useT } from '../i18n'
+import { useT, regionName } from '../i18n'
 // EN: The world map is bundled, not fetched — fetch() of a local file is
 //     blocked for file:// pages in Electron (opaque origin), so the map
 //     stayed blank in the packaged app.
@@ -115,7 +115,7 @@ function applyLabelCollision(g, k) {
 }
 
 export default function MapView({ nodes, onNodeClick }) {
-  const { t, lang } = useT()
+  const { t, locale } = useT()
   const svgRef    = useRef(null)
   const gRef      = useRef(null)
   const projRef   = useRef(null)
@@ -152,7 +152,7 @@ export default function MapView({ nodes, onNodeClick }) {
     if (!worldTopo || !userPos || !svgRef.current) return
     userPosRef.current = userPos
     drawBase(worldTopo, userPos, t('map_you'))
-  }, [worldTopo, userPos, lang])
+  }, [worldTopo, userPos, locale])
 
   useEffect(() => {
     if (!gRef.current || !projRef.current) return
@@ -442,15 +442,15 @@ export default function MapView({ nodes, onNodeClick }) {
           </div>
           {tooltip.node.country && (
             <div style={{ fontSize: 10, color: '#94a3b8' }}>
-              {[tooltip.node.city, tooltip.node.country].filter(Boolean).join(', ')}
+              {[tooltip.node.city, regionName(tooltip.node.country_code, locale, tooltip.node.country)].filter(Boolean).join(', ')}
             </div>
           )}
           {tooltip.node.org && (
             <div style={{ fontSize: 10, color: '#64748b' }}>{tooltip.node.org}</div>
           )}
           <div style={{ marginTop: 5, fontSize: 10, display: 'flex', gap: 10 }}>
-            <span style={{ color: tooltip.node.color }}>{tooltip.node.category}</span>
-            <span style={{ color: '#475569' }}>{tooltip.node.packets} pkt</span>
+            <span style={{ color: tooltip.node.color }}>{t(`cat_${tooltip.node.category}`)}</span>
+            <span style={{ color: '#475569' }}>{t('packet_short', tooltip.node.packets || 0)}</span>
           </div>
         </div>
       )}

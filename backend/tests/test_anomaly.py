@@ -16,7 +16,10 @@ from collections import deque
 from datetime import datetime, timezone
 
 from capture.sniffer import Packet
-from detection.anomaly import AnomalyDetector, BEACON_MIN_SAMPLES
+from detection.anomaly import (
+    AnomalyDetector, BEACON_MIN_SAMPLES,
+    SUSPICIOUS_PORTS, SUSPICIOUS_PORT_REASONS,
+)
 
 PUBLIC_IP = "91.198.174.192"   # EN: real public IP (wikipedia.org)
                                # FR: vraie IP publique (wikipedia.org)
@@ -56,6 +59,17 @@ def test_suspicious_port():
     det = AnomalyDetector()
     alerts = det.analyze_packet(pkt(port=4444), {})
     assert any(a.type == "SUSPICIOUS_PORT" and a.details["port"] == 4444 for a in alerts)
+    # EN: The stable code the frontend localizes must ride along.
+    # FR: Le code stable que le frontend localise doit être présent.
+    assert any(a.details.get("reason_code") == "metasploit_shell" for a in alerts)
+
+
+def test_suspicious_port_reasons_cover_every_port():
+    """EN: SUSPICIOUS_PORT_REASONS must stay in lockstep with SUSPICIOUS_PORTS —
+        a port without a code would leak raw English into the zh/fr UI.
+    FR: SUSPICIOUS_PORT_REASONS doit rester synchronisé avec SUSPICIOUS_PORTS —
+        un port sans code ferait fuir de l'anglais brut dans l'UI zh/fr."""
+    assert set(SUSPICIOUS_PORTS) == set(SUSPICIOUS_PORT_REASONS)
 
 
 def test_port_8080_not_flagged():

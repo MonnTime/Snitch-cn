@@ -12,7 +12,7 @@
 import { Wifi, Smartphone, Monitor, Tv, Cpu, HelpCircle, ShieldOff } from 'lucide-react'
 import PrivacyScore from './PrivacyScore'
 import BandwidthChart from './BandwidthChart'
-import { useT } from '../i18n'
+import { useT, regionName } from '../i18n'
 
 // EN: Lucide icon per LAN device type. / FR: Icône Lucide par type d'appareil LAN.
 const DEVICE_ICONS = {
@@ -68,23 +68,29 @@ function fmt(bytes) {
  *     La catégorie spéciale « alerted » ne garde que les nœuds présents dans
  *     `alertedIds` (alertes warning/critique), quelle que soit la catégorie.
  */
-export function matchesFilter(node, filter, alertedIds) {
+export function matchesFilter(node, filter, alertedIds, locale = 'en-US') {
   if (!filter || (filter.category === 'all' && !filter.text)) return true
   if (filter.category === 'alerted') {
     if (!alertedIds || !alertedIds.has(node.id)) return false
   } else if (filter.category !== 'all' && node.category !== filter.category) return false
   if (filter.text) {
     const t = filter.text.toLowerCase()
+    // EN: Match the localized region name too — a Chinese user typing "美国"
+    //     must find the host whose backend `country` is "United States".
+    // FR: Correspondre aussi au nom de région localisé — un utilisateur
+    //     chinois tapant « 美国 » doit trouver l'hôte « United States ».
+    const country = regionName(node.country_code, locale, node.country)
     return (node.label   || '').toLowerCase().includes(t)
         || (node.ip      || '').toLowerCase().includes(t)
         || (node.country || '').toLowerCase().includes(t)
+        || (country      || '').toLowerCase().includes(t)
         || (node.org     || '').toLowerCase().includes(t)
   }
   return true
 }
 
 export default function Sidebar({ nodes, lanDevices, packets, selected, onClose, privacyScore, bandwidth, filter, onFilterChange, onWhitelist, alertedNodes }) {
-  const { t } = useT()
+  const { t, locale } = useT()
   const extNodes = Object.values(nodes).filter(n => n.id !== 'local')
   // EN: the "Alerts" chip narrows the LAN list to flagged devices too —
   //     other categories keep the full device list (they're local, not hosts).
@@ -95,7 +101,7 @@ export default function Sidebar({ nodes, lanDevices, packets, selected, onClose,
     .filter(d => filter?.category !== 'alerted' || (alertedNodes && alertedNodes.has(d.id)))
   const totalBytes = extNodes.reduce((a, n) => a + (n.bytes || 0), 0)
 
-  const filteredNodes = extNodes.filter(n => matchesFilter(n, filter, alertedNodes))
+  const filteredNodes = extNodes.filter(n => matchesFilter(n, filter, alertedNodes, locale))
   const hiddenCount = filteredNodes.length < extNodes.length ? extNodes.length : null
 
   return (
@@ -273,7 +279,7 @@ function DeviceRow({ device }) {
 
 /** EN: One row of the external-host list. / FR: Une ligne de la liste d'hôtes externes. */
 function NodeRow({ node }) {
-  const { t } = useT()
+  const { t, locale } = useT()
   return (
     <div style={{ padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #1a1a1a' }}>
       <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[node.category] || '#94a3b8', flexShrink: 0 }} />
@@ -281,7 +287,9 @@ function NodeRow({ node }) {
         <div style={{ fontSize: 11, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {nodeName(node, t)}
         </div>
-        <div style={{ fontSize: 9, color: '#64748b' }}>{node.country || '-'} · {node.packets || 0} pkt</div>
+        <div style={{ fontSize: 9, color: '#64748b' }}>
+          {regionName(node.country_code, locale, node.country) || '-'} · {t('packet_short', node.packets || 0)}
+        </div>
       </div>
       <div style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{fmt(node.bytes || 0)}</div>
     </div>
@@ -291,14 +299,14 @@ function NodeRow({ node }) {
 /** EN: Selected-node fields + top processes + whitelist action.
  *  FR: Champs du nœud sélectionné + top processus + action de whitelist. */
 function NodeDetail({ node, onWhitelist }) {
-  const { t } = useT()
+  const { t, locale } = useT()
   const fields = [
     [t('field_ip'),       node.ip],
     [t('field_mac'),      node.mac],
     [t('field_hostname'), node.hostname],
     [t('field_vendor'),   node.vendor],
     [t('field_type'),     node.device_type ? enumName(t, 'devtype_', node.device_type) : null],
-    [t('field_country'),  node.country],
+    [t('field_country'),  regionName(node.country_code, locale, node.country)],
     [t('field_city'),     node.city],
     [t('field_org'),      node.org],
     [t('field_category'), node.category ? enumName(t, 'cat_', node.category) : null],

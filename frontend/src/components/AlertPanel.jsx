@@ -113,7 +113,7 @@ export function AlertPanel({ alerts, onClose, onIgnore }) {
           {criticalCount > 0 && <Badge count={criticalCount} color="#ef4444" />}
           {warningCount  > 0 && <Badge count={warningCount}  color="#f59e0b" />}
           {infoCount     > 0 && <Badge count={infoCount}     color="#38bdf8" />}
-          <button onClick={onClose} aria-label="Close alerts / Fermer les alertes" style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+          <button onClick={onClose} aria-label={t('aria_close_alerts')} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
             <X size={16} />
           </button>
         </div>
@@ -131,6 +131,35 @@ export function AlertPanel({ alerts, onClose, onIgnore }) {
   )
 }
 
+// EN: Raw `details` keys → i18n keys, so the small monospace line under each
+//     alert reads in the UI language instead of leaking English field names.
+// FR: Clés brutes de `details` → clés i18n, pour que la petite ligne monospace
+//     sous chaque alerte suive la langue de l'UI.
+const DETAIL_KEYS = {
+  ip: 'detail_ip', host: 'detail_host', hosts: 'detail_hosts',
+  port: 'detail_port', process: 'detail_process', reason: 'detail_reason',
+  direction: 'detail_direction', source: 'detail_source',
+  mac: 'detail_mac', vendor: 'detail_vendor',
+  country: 'detail_country', org: 'detail_org',
+  interval_s: 'detail_interval_s', cv: 'detail_cv',
+  samples: 'detail_samples', bytes: 'detail_bytes',
+  window_s: 'detail_window_s', ports: 'detail_ports',
+  device: 'detail_device', count: 'detail_count',
+}
+
+/**
+ * EN: Localize the backend's structured params before the `alertmsg_*`
+ *     functions interpolate them: `reason_code` becomes a translated reason.
+ * FR: Localiser les paramètres structurés du backend avant interpolation par
+ *     les fonctions `alertmsg_*` : `reason_code` devient une raison traduite.
+ */
+function localizeDetails(t, details) {
+  if (!details || !details.reason_code) return details
+  const key = `reason_${details.reason_code}`
+  const reason = t(key)
+  return reason === key ? details : { ...details, reason }
+}
+
 /**
  * EN: Translated alert message — the backend ships a code (alert.type) plus
  *     structured params (alert.details); the `alertmsg_*` i18n functions
@@ -144,7 +173,7 @@ export function AlertPanel({ alerts, onClose, onIgnore }) {
 function alertMessage(t, alert) {
   if (alert._grouped) return t('alertmsg_NEW_HOSTS', alert.details.count)
   const key = `alertmsg_${alert.type}`
-  const translated = t(key, alert.details || {})
+  const translated = t(key, localizeDetails(t, alert.details) || {})
   return translated !== key ? translated : alert.message
 }
 
@@ -156,6 +185,9 @@ function AlertRow({ alert, onIgnore }) {
   // EN: Translate the type if a key exists, else show the raw type.
   // FR: Traduire le type si une clé existe, sinon afficher le type brut.
   const typeLabel = t(`alert_${alert.type}`) !== `alert_${alert.type}` ? t(`alert_${alert.type}`) : alert.type
+  // EN: Params with the suspicious-port reason already translated.
+  // FR: Paramètres avec la raison du port suspect déjà traduite.
+  const details = localizeDetails(t, alert.details)
 
   return (
     <div style={{
@@ -173,9 +205,15 @@ function AlertRow({ alert, onIgnore }) {
               </span>
             </div>
             <div style={{ fontSize: 11, color: '#e2e8f0', lineHeight: 1.4 }}>{alertMessage(t, alert)}</div>
-            {alert.details && Object.keys(alert.details).length > 0 && (
+            {details && Object.keys(details).length > 0 && (
               <div style={{ marginTop: 3, fontSize: 9, color: '#64748b', fontFamily: 'monospace' }}>
-                {Object.entries(alert.details).filter(([, v]) => v).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' · ')}
+                {Object.entries(details)
+                  .filter(([k, v]) => v && k !== 'reason_code')
+                  .map(([k, v]) => {
+                    const label = DETAIL_KEYS[k] ? t(DETAIL_KEYS[k]) : k
+                    return `${label}: ${Array.isArray(v) ? v.join(', ') : v}`
+                  })
+                  .join(' · ')}
               </div>
             )}
             {!alert._grouped && onIgnore && (

@@ -30,15 +30,17 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 import { nodeIconURI } from './icons'
-import { useT } from '../i18n'
+import { useT, regionName } from '../i18n'
 
 /** EN: Edge stroke width scales with logged traffic volume.
  *  FR: La largeur d'arête suit le volume de trafic en échelle log. */
 const edgeWidth = d => d.dashed ? 1 : Math.min(1 + Math.log1p((d.bytes || 0) / 1024), 6)
 
 /** EN: Native tooltip text for a node datum. / FR: Texte d'infobulle native d'un nœud. */
-const nodeTitle = (d, disp) =>
-  [disp(d), d.vendor, d.mac, d.country, d.org, `${d.packets || 0} pkts`]
+const nodeTitle = (d, disp, t, locale) =>
+  [disp(d), d.vendor, d.mac,
+   regionName(d.country_code, locale, d.country), d.org,
+   t('packet_short', d.packets || 0)]
     .filter(Boolean).join('\n')
 
 /** EN: Truncated label under a node. / FR: Étiquette tronquée sous un nœud. */
@@ -66,7 +68,7 @@ export default function ForceGraph({ nodes, edges, lanDevices, alertedNodes = ne
   const dataRef  = useRef({ nodes: {}, edges: {}, lanDevices: {} })
   const clickRef = useRef(null)   // EN: latest onNodeClick / FR: dernier onNodeClick
 
-  const { t } = useT()
+  const { t, locale } = useT()
   // EN: Display name — `label_key` resolves through i18n (e.g. the "local"
   //     node shows "This Device"/"Cet appareil"), then label, then IP.
   // FR: Nom d'affichage — `label_key` passe par l'i18n (ex. le nœud « local »
@@ -76,6 +78,8 @@ export default function ForceGraph({ nodes, edges, lanDevices, alertedNodes = ne
   displayNameRef.current = displayName
   const tRef = useRef(t)
   tRef.current = t
+  const localeRef = useRef(locale)
+  localeRef.current = locale
 
   // EN: Always-latest data for effects that don't rebuild the sim.
   // FR: Données toujours à jour pour les effets qui ne reconstruisent pas la sim.
@@ -385,7 +389,7 @@ export default function ForceGraph({ nodes, edges, lanDevices, alertedNodes = ne
 
           // EN: Native tooltip — kept fresh by the metrics effect below.
           // FR: Infobulle native — maintenue à jour par l'effet métriques.
-          en.append('title').text(d => nodeTitle(d, displayNameRef.current))
+          en.append('title').text(d => nodeTitle(d, displayNameRef.current, tRef.current, localeRef.current))
 
           return en
         },
@@ -464,7 +468,7 @@ export default function ForceGraph({ nodes, edges, lanDevices, alertedNodes = ne
     )
 
     link.attr('stroke-width', d => edgeWidth(edgeById.get(d.id) || d))
-    node.select('title').text(d => nodeTitle(nodeById.get(d.id) || d, displayNameRef.current))
+    node.select('title').text(d => nodeTitle(nodeById.get(d.id) || d, displayNameRef.current, tRef.current, localeRef.current))
     node.select('text').text(d => nodeLabel(nodeById.get(d.id) || d, displayNameRef.current))
 
     paintAlertRings(node, alertedNodes)
@@ -533,12 +537,14 @@ export default function ForceGraph({ nodes, edges, lanDevices, alertedNodes = ne
       const { text, category } = filter
       if (category !== 'all' && d.category !== category) return false
       if (text) {
-        const t = text.toLowerCase()
-        return (d.label   || '').toLowerCase().includes(t)
-            || (d.ip      || '').toLowerCase().includes(t)
-            || (d.country || '').toLowerCase().includes(t)
-            || (d.org     || '').toLowerCase().includes(t)
-            || (d.hostname|| '').toLowerCase().includes(t)
+        const q = text.toLowerCase()
+        const country = regionName(d.country_code, localeRef.current, d.country)
+        return (d.label   || '').toLowerCase().includes(q)
+            || (d.ip      || '').toLowerCase().includes(q)
+            || (d.country || '').toLowerCase().includes(q)
+            || (country   || '').toLowerCase().includes(q)
+            || (d.org     || '').toLowerCase().includes(q)
+            || (d.hostname|| '').toLowerCase().includes(q)
       }
       return true
     }

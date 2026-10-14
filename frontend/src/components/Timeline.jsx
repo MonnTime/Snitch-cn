@@ -24,7 +24,7 @@ function fmt(bytes) {
 }
 
 export default function Timeline() {
-  const { t, lang } = useT()
+  const { t, locale } = useT()
   const svgRef = useRef(null)
   const [data, setData] = useState([])
   const [expanded, setExpanded] = useState(true)
@@ -34,10 +34,11 @@ export default function Timeline() {
   /**
    * EN: Minute labels localized to the UI language.
    * FR: Étiquettes de minute localisées selon la langue de l'UI.
+   * ZH: 分钟标签按界面语言本地化。
    */
   function fmtMinute(iso) {
     const d = new Date(iso + ':00Z')
-    return d.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
   }
 
   const fetchTimeline = useCallback(() => {
@@ -66,7 +67,7 @@ export default function Timeline() {
   useEffect(() => {
     if (!expanded || !svgRef.current || data.length === 0) return
     drawChart()
-  }, [data, expanded, lang])
+  }, [data, expanded, locale])
 
   function drawChart() {
     const el = svgRef.current
@@ -175,11 +176,11 @@ export default function Timeline() {
         }}
       >
         <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
-          Timeline
+          {t('timeline_title')}
         </span>
 
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <Chip label={t('timeline_packets', totalPkts)} color="#3b82f6" />
+          <Chip label={t('timeline_packets', totalPkts, locale)} color="#3b82f6" />
           <Chip label={fmt(totalBytes)} color="#6366f1" />
           {totalAlerts > 0 && <Chip label={t('timeline_alerts', totalAlerts)} color="#f59e0b" />}
         </div>
@@ -197,7 +198,7 @@ export default function Timeline() {
                 fontSize: 9, padding: '2px 7px', cursor: 'pointer',
               }}
             >
-              {m}min
+              {t('min_short', m)}
             </button>
           ))}
           {/* EN: Live pulse dot — no label text.
@@ -225,7 +226,7 @@ export default function Timeline() {
           color: '#e2e8f0', pointerEvents: 'none', zIndex: 500,
         }}>
           <div style={{ fontWeight: 700, marginBottom: 3 }}>{fmtMinute(tooltip.d.minute)}</div>
-          <div>{t('timeline_packets', tooltip.d.packets)}</div>
+          <div>{t('timeline_packets', tooltip.d.packets, locale)}</div>
           <div style={{ color: '#64748b' }}>{fmt(tooltip.d.bytes)}</div>
           {tooltip.d.alerts > 0 && (
             <div style={{ color: '#f59e0b', marginTop: 2 }}>! {t('timeline_alerts', tooltip.d.alerts)}</div>

@@ -25,6 +25,7 @@ import { SettingsButton, SettingsPanel } from './components/Settings'
 import Onboarding from './components/Onboarding'
 import Timeline from './components/Timeline'
 import Dropdown from './components/Dropdown'
+import LangToggle from './components/LangToggle'
 import { apiBase, authHeaders } from './api'
 import { useWebSocket } from './hooks/useWebSocket'
 import { computePrivacyScore } from './scoring/privacy'
@@ -45,7 +46,8 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(
     () => !localStorage.getItem('snitch_onboarded'))
   const [filter, setFilter] = useState({ text: '', category: 'all' })
-  const { lang, setLang } = useT()
+  // EN: `locale` feeds the country-name search match. / FR: `locale` alimente la recherche par pays.
+  const { locale } = useT()
 
   // EN: Node ids → worst alert severity, info alerts EXCLUDED — a "new
   //     device seen" notice is informational, not a red alarm. The map
@@ -79,11 +81,11 @@ export default function App() {
       if (id === 'local') { out[id] = node; continue }
       const procs = node.processes ? Object.keys(node.processes) : []
       if (procs.length > 0 && procs.every(p => excludedProcesses.includes(p))) continue
-      if (!matchesFilter(node, filter, alertedNodes)) continue
+      if (!matchesFilter(node, filter, alertedNodes, locale)) continue
       out[id] = node
     }
     return out
-  }, [nodes, excludedProcesses, filter, alertedNodes])
+  }, [nodes, excludedProcesses, filter, alertedNodes, locale])
 
   // EN: LAN devices obey the same filter in the graph — picking "Tracking"
   //     hides the local devices too; the sidebar keeps its own filtering.
@@ -94,10 +96,10 @@ export default function App() {
     if (!filter || (filter.category === 'all' && !filter.text)) return lanDevices
     const out = {}
     for (const [id, d] of Object.entries(lanDevices)) {
-      if (matchesFilter({ ...d, label: d.hostname }, filter, alertedNodes)) out[id] = d
+      if (matchesFilter({ ...d, label: d.hostname }, filter, alertedNodes, locale)) out[id] = d
     }
     return out
-  }, [lanDevices, filter, alertedNodes])
+  }, [lanDevices, filter, alertedNodes, locale])
 
   const filteredEdges = useMemo(() => {
     const visibleIds = new Set([...Object.keys(filteredNodes), ...Object.keys(filteredLanDevices)])
@@ -208,7 +210,7 @@ export default function App() {
           )}
 
           {showSettings && (
-            <SettingsPanel onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} />
+            <SettingsPanel onClose={() => setShowSettings(false)} />
           )}
 
           {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
@@ -517,7 +519,7 @@ function PortFilter({ ports, onUpdate }) {
       }
     >
       <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
-        {active ? `${ports.length} port${ports.length > 1 ? 's' : ''}` : t('port_all')}
+        {active ? t('port_count', ports.length) : t('port_all')}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: ports.length ? 10 : 0 }}>
@@ -714,31 +716,6 @@ function CaptureToggle({ capturing, onToggle }) {
       <Icon size={11} />
       {label}
     </button>
-  )
-}
-
-/** EN: EN/FR language toggle — the headline feature.
- *  FR: Bascule de langue EN/FR — la fonctionnalité vedette. */
-function LangToggle() {
-  const { lang, setLang } = useT()
-  return (
-    <div style={{
-      display: 'flex', background: '#0f0f0f',
-      border: '1px solid #2a2a2a', borderRadius: 20, overflow: 'hidden',
-    }}>
-      {['en', 'fr'].map(l => (
-        <button key={l} onClick={() => setLang(l)} style={{
-          background: lang === l ? '#3b82f6' : 'transparent',
-          border: 'none', cursor: 'pointer',
-          color: lang === l ? '#fff' : '#64748b',
-          padding: '5px 12px', fontSize: 11, fontWeight: 600,
-          textTransform: 'uppercase',
-          transition: 'background 0.15s',
-        }}>
-          {l}
-        </button>
-      ))}
-    </div>
   )
 }
 

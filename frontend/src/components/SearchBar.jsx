@@ -11,16 +11,16 @@
 import { Search, X } from 'lucide-react'
 import { useT } from '../i18n'
 
-// EN: Category chips — `label` is a hardcoded English service name, otherwise
-//     the chip falls back to an i18n key.
-// FR: Puces de catégorie — `label` est un nom de service anglais fixe, sinon
-//     la puce utilise une clé i18n.
+// EN: Category chips — every label resolves through i18n (`cat_*` keys), so
+//     the chips follow the UI language like the rest of the interface.
+// FR: Puces de catégorie — chaque libellé passe par l'i18n (clés `cat_*`),
+//     donc les puces suivent la langue de l'UI comme le reste de l'interface.
 const CATEGORY_IDS = [
   { id: 'all',      color: '#64748b' },
-  { id: 'safe',     label: 'HTTPS',    color: '#22c55e' },
-  { id: 'tracking', label: 'Tracking', color: '#f59e0b' },
-  { id: 'cdn',      label: 'CDN',      color: '#6366f1' },
-  { id: 'dns',      label: 'DNS',      color: '#38bdf8' },
+  { id: 'safe',     color: '#22c55e' },
+  { id: 'tracking', color: '#f59e0b' },
+  { id: 'cdn',      color: '#6366f1' },
+  { id: 'dns',      color: '#38bdf8' },
   { id: 'unknown',  color: '#94a3b8' },
   { id: 'alerted',  color: '#ef4444' },
 ]
@@ -29,12 +29,7 @@ export default function SearchBar({ filter, onChange }) {
   const { t } = useT()
   const { text, category } = filter
 
-  const categories = CATEGORY_IDS.map(c => ({
-    ...c,
-    label: c.label ?? (c.id === 'all' ? t('cat_all')
-                    : c.id === 'alerted' ? t('cat_alerted')
-                    : t('cat_unknown')),
-  }))
+  const categories = CATEGORY_IDS.map(c => ({ ...c, label: t(`cat_${c.id}`) }))
 
   return (
     <div style={{ padding: '8px 12px' }}>

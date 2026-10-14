@@ -13,12 +13,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="apple-touch-icon" href="logo-180.png" />
+    <!-- EN: Fallback shell title — React overwrites it with the localized
+         `doc_title` as soon as the i18n provider mounts.
+         FR: Titre de repli — React le remplace par `doc_title` localisé dès
+         que le provider i18n est monté. -->
     <title>Snitch — Track every hidden flow. / Traquez chaque flux masqué.</title>
     <style>
       /* EN: Global reset + dark base theme.
          FR: Reset global + thème sombre de base. */
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { background: #000000; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
+      body { background: #000000; color: #e2e8f0; font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif; overflow: hidden; }
 
       /* EN: Pill scrollbars to match the bento cards — fully rounded thumb
          floating on a transparent track, inset by a transparent border so
